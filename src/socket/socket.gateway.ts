@@ -3,6 +3,7 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
+  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
@@ -14,6 +15,8 @@ export class SocketGateway
 {
   constructor() {}
 
+  users = [];
+
   @WebSocketServer()
   server: Server;
 
@@ -23,7 +26,16 @@ export class SocketGateway
     this.logger.log('Init');
   }
 
-  async handleConnection(socket: Socket, ...args: any[]) {}
+  async handleConnection(socket: Socket, ...args: any[]) {
+    this.users.push(socket);
+  }
 
   async handleDisconnect(socket: Socket): Promise<void> {}
+
+  @SubscribeMessage('SEND_MESSAGE')
+  async chat(socket: Socket, data) {
+    this.server
+      .to(this.users[this.users.length - 1])
+      .emit('RECEIVE_MESSAGE', data);
+  }
 }
