@@ -1,9 +1,12 @@
-import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { Module } from '@nestjs/common';
+import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SocketModule } from './socket/socket.module';
+import { UserModule } from './user/user.module';
+import { User } from './user/user.entity';
 
 @Module({
   imports: [
@@ -14,9 +17,10 @@ import { SocketModule } from './socket/socket.module';
       username: 'root',
       password: '3565',
       database: 'random_chat',
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      entities: [__dirname + '/**/**/*.entity{.ts,.js}'],
       synchronize: true,
     }),
+
     RedisModule.forRoot({
       config: [
         {
@@ -33,7 +37,9 @@ import { SocketModule } from './socket/socket.module';
         },
       ],
     }),
+
     SocketModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],
