@@ -1,5 +1,7 @@
 import { Logger } from '@nestjs/common';
 import {
+  ConnectedSocket,
+  MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
@@ -8,14 +10,15 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Socket, Server } from 'socket.io';
+import { SendMessage } from './socket.dto';
 
-@WebSocketGateway({ transports: ['websocket'] })
+@WebSocketGateway({
+  transports: ['websocket'],
+})
 export class SocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   constructor() {}
-
-  users = [];
 
   @WebSocketServer()
   server: Server;
@@ -27,15 +30,18 @@ export class SocketGateway
   }
 
   async handleConnection(socket: Socket, ...args: any[]) {
-    this.users.push(socket);
+    this.logger.log(`Client Connected : ${socket.id}`);
   }
 
-  async handleDisconnect(socket: Socket): Promise<void> {}
+  async handleDisconnect(socket: Socket): Promise<void> {
+    this.logger.log(`Client Disconnected : ${socket.id}`);
+  }
 
   @SubscribeMessage('SEND_MESSAGE')
-  async chat(socket: Socket, data) {
-    this.server
-      .to(this.users[this.users.length - 1])
-      .emit('RECEIVE_MESSAGE', data);
+  async chat(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() data: SendMessage,
+  ) {
+    this.server.emit('RECEIVE_MESSAGE', data);
   }
 }
