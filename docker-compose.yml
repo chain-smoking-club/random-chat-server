@@ -1,0 +1,9 @@
+version: '2.2'
+
+services:
+  redis_random_chat:
+    container_name: redis_random_chat
+    image: redis:6.2
+    restart: always
+    ports:
+      - 26379:6379

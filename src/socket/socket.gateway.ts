@@ -1,3 +1,4 @@
+import { InjectRedis } from '@liaoliaots/nestjs-redis/dist/redis/common';
 import { Logger } from '@nestjs/common';
 import {
   ConnectedSocket,
@@ -9,6 +10,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
+import { Redis } from 'ioredis';
 import { Socket, Server } from 'socket.io';
 import { SendMessage } from './socket.dto';
 
@@ -18,7 +20,10 @@ import { SendMessage } from './socket.dto';
 export class SocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
-  constructor() {}
+  constructor(
+    @InjectRedis('user_socket')
+    private readonly redis_user_socket: Redis,
+  ) {}
 
   @WebSocketServer()
   server: Server;
