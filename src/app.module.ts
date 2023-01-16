@@ -6,7 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SocketModule } from './socket/socket.module';
 import { UserModule } from './user/user.module';
-import { User } from './user/user.entity';
+import { User } from './entities/user.entity';
 
 @Module({
   imports: [
@@ -17,7 +17,7 @@ import { User } from './user/user.entity';
       username: 'root',
       password: '3565',
       database: 'random_chat',
-      entities: [__dirname + '/**/**/*.entity{.ts,.js}'],
+      entities: [User],
       synchronize: true,
     }),
 
