@@ -26,14 +26,8 @@ import { User } from './entities/user.entity';
         {
           host: 'localhost',
           port: 26379,
-          namespace: 'user_socket',
-          db: 1,
-        },
-        {
-          host: 'localhost',
-          port: 26379,
           namespace: 'socket_user',
-          db: 2,
+          db: 1,
         },
       ],
     }),
