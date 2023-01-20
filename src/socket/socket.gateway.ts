@@ -29,6 +29,9 @@ export class SocketGateway
   constructor(
     @InjectRedis('socket_user')
     private readonly redis_socket_user: Redis,
+
+    @InjectRedis('socket_room')
+    private readonly redis_socket_room: Redis,
   ) {}
 
   rooms: string[] = [];
@@ -53,13 +56,13 @@ export class SocketGateway
     this.logger.log(`Client Disconnected : ${socket.id}`);
   }
 
-  @SubscribeMessage('REGISTER_USER_NAME')
+  @SubscribeMessage('registerUserName')
   async registerUserName(
     @ConnectedSocket() socket: Socket,
     @MessageBody() data: RegisterUserName,
   ) {
     if (this.connectedUsers.includes(data.userName)) {
-      this.server.to(socket.id).emit('REGISTER_USER_NAME', {
+      this.server.to(socket.id).emit('registerUserName', {
         message: 'user name already exists',
         userName: data.userName,
       });
@@ -70,7 +73,7 @@ export class SocketGateway
     await this.redis_socket_user.set(socket.id, data.userName);
     this.connectedUsers.push(data.userName);
 
-    this.server.to(socket.id).emit('REGISTER_USER_NAME', {
+    this.server.to(socket.id).emit('registerUserName', {
       message: 'success',
       userName: data.userName,
     });
@@ -78,13 +81,13 @@ export class SocketGateway
     this.logger.log(`User ${data.userName} registered`);
   }
 
-  @SubscribeMessage('MAKE_ROOM')
+  @SubscribeMessage('makeRoom')
   async makeRoom(
     @ConnectedSocket() socket: Socket,
     @MessageBody() data: MakeOrJoinOrLeaveRoom,
   ) {
     if (this.rooms.includes(data.roomName)) {
-      this.server.to(socket.id).emit('MAKE_ROOM', {
+      this.server.to(socket.id).emit('makeRoom', {
         message: 'room already exists',
         roomName: data.roomName,
       });
@@ -96,7 +99,7 @@ export class SocketGateway
 
     this.rooms.push(data.roomName);
     socket.join(data.roomName);
-    this.server.to(socket.id).emit('MAKE_ROOM', {
+    this.server.to(socket.id).emit('makeRoom', {
       message: 'success',
       roomName: data.roomName,
       userName,
@@ -105,7 +108,7 @@ export class SocketGateway
     this.logger.log(`Room ${data.roomName} created`);
   }
 
-  @SubscribeMessage('JOIN_ROOM')
+  @SubscribeMessage('joinRoom')
   async joinRoom(
     @ConnectedSocket() socket: Socket,
     @MessageBody() data: MakeOrJoinOrLeaveRoom,
@@ -117,7 +120,7 @@ export class SocketGateway
         this.rooms.splice(this.rooms.indexOf(room), 1);
         socket.join(data.roomName);
 
-        this.server.to(socket.id).emit('JOIN_ROOM', {
+        this.server.to(socket.id).emit('joinRoom', {
           message: 'success',
           roomName: data.roomName,
           userName,
@@ -130,14 +133,14 @@ export class SocketGateway
     }
   }
 
-  @SubscribeMessage('SEND_MESSAGE')
+  @SubscribeMessage('sendMessage')
   async chat(
     @ConnectedSocket() socket: Socket,
     @MessageBody() data: SendMessage,
   ) {
     const userName = await this.redis_socket_user.get(socket.id);
 
-    this.server.to(data.roomName).emit('SEND_MESSAGE', {
+    this.server.to(data.roomName).emit('sendMessage', {
       message: data.content,
       roomName: data.roomName,
       userName,
@@ -146,7 +149,7 @@ export class SocketGateway
     this.logger.log(`Message sent to room ${data.roomName}`);
   }
 
-  @SubscribeMessage('LEAVE_ROOM')
+  @SubscribeMessage('leaveRoom')
   async leaveRoom(
     @ConnectedSocket() socket: Socket,
     @MessageBody() data: MakeOrJoinOrLeaveRoom,
@@ -156,9 +159,9 @@ export class SocketGateway
     this.logger.log(`User left room ${data.roomName}`);
   }
 
-  @SubscribeMessage('GET_ROOMS')
+  @SubscribeMessage('getRooms')
   async getRooms(@ConnectedSocket() socket: Socket) {
-    this.server.to(socket.id).emit('GET_ROOMS', {
+    this.server.to(socket.id).emit('getRooms', {
       message: 'success',
       rooms: this.rooms,
     });
