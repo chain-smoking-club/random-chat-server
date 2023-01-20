@@ -1,18 +1,18 @@
 version: '2.2'
 
 services:
-  mysql_random_chat:
+  random-chat-mysql:
     image: mysql:latest
-    container_name: mysql_random_chat
+    container_name: random-chat-mysql
     environment:
       MYSQL_ROOT_PASSWORD: '3565'
       MYSQL_DATABASE: random_chat
     ports:
-      - 23306:3306
+      - 13306:3306
 
-  redis_random_chat:
+  random-chat-redis:
     image: redis:latest
-    container_name: redis_random_chat
+    container_name: random-chat-redis
     restart: always
     ports:
-      - 26379:6379
+      - 16379:6379
