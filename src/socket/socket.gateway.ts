@@ -13,11 +13,7 @@ import {
 import { Redis } from 'ioredis';
 import { Socket, Server } from 'socket.io';
 
-import {
-  MakeOrJoinOrLeaveRoom,
-  RegisterUserName,
-  SendMessage,
-} from './socket.dto';
+import { MakeOrJoinOrLeaveRoom, SendMessage } from './socket.dto';
 
 @WebSocketGateway({
   transports: ['websocket'],
@@ -26,16 +22,9 @@ import {
 export class SocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
-  constructor(
-    @InjectRedis('socket_user')
-    private readonly redis_socket_user: Redis,
-
-    @InjectRedis('socket_room')
-    private readonly redis_socket_room: Redis,
-  ) {}
+  constructor() {}
 
   rooms: string[] = [];
-  connectedUsers: string[] = [];
 
   @WebSocketServer()
   server: Server;
@@ -61,6 +50,7 @@ export class SocketGateway
   ) {
     if (this.rooms.includes(data.roomName)) {
       this.server.to(socket.id).emit('makeRoomResponse', {
+        isSuccess: false,
         message: 'room already exists',
         roomName: data.roomName,
       });
@@ -71,6 +61,7 @@ export class SocketGateway
     this.rooms.push(data.roomName);
     socket.join(data.roomName);
     this.server.to(socket.id).emit('makeRoomResponse', {
+      isSuccess: true,
       message: 'success',
       roomName: data.roomName,
     });
@@ -89,8 +80,8 @@ export class SocketGateway
         socket.join(data.roomName);
 
         this.server.to(socket.id).emit('joinRoomResponse', {
+          isSuccess: true,
           message: 'success',
-          roomName: data.roomName,
         });
 
         this.logger.log(`User joined room ${data.roomName}`);
@@ -98,6 +89,11 @@ export class SocketGateway
         return;
       }
     }
+
+    this.server.to(socket.id).emit('joinRoomResponse', {
+      isSuccess: false,
+      message: 'room does not exist',
+    });
   }
 
   @SubscribeMessage('sendMessage')
@@ -106,8 +102,7 @@ export class SocketGateway
     @MessageBody() data: SendMessage,
   ) {
     this.server.to(data.roomName).emit('sendMessageResponse', {
-      message: data.content,
-      roomName: data.roomName,
+      content: data.content,
     });
 
     this.logger.log(`Message sent to room ${data.roomName}`);
@@ -118,18 +113,12 @@ export class SocketGateway
     @ConnectedSocket() socket: Socket,
     @MessageBody() data: MakeOrJoinOrLeaveRoom,
   ) {
+    this.server.to(data.roomName).emit('leaveRoomResponse', {
+      isSuccess: true,
+    });
+
     socket.leave(data.roomName);
 
     this.logger.log(`User left room ${data.roomName}`);
-  }
-
-  @SubscribeMessage('getRooms')
-  async getRooms(@ConnectedSocket() socket: Socket) {
-    this.server.to(socket.id).emit('getRooms', {
-      message: 'success',
-      rooms: this.rooms,
-    });
-
-    this.logger.log(`Rooms sent to user ${socket.id}`);
   }
 }
