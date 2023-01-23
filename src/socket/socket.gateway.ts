@@ -51,34 +51,7 @@ export class SocketGateway
   }
 
   async handleDisconnect(socket: Socket): Promise<void> {
-    await this.redis_socket_user.del(socket.id);
-
     this.logger.log(`Client Disconnected : ${socket.id}`);
-  }
-
-  @SubscribeMessage('registerUserName')
-  async registerUserName(
-    @ConnectedSocket() socket: Socket,
-    @MessageBody() data: RegisterUserName,
-  ) {
-    if (this.connectedUsers.includes(data.userName)) {
-      this.server.to(socket.id).emit('registerUserName', {
-        message: 'user name already exists',
-        userName: data.userName,
-      });
-
-      return;
-    }
-
-    await this.redis_socket_user.set(socket.id, data.userName);
-    this.connectedUsers.push(data.userName);
-
-    this.server.to(socket.id).emit('registerUserName', {
-      message: 'success',
-      userName: data.userName,
-    });
-
-    this.logger.log(`User ${data.userName} registered`);
   }
 
   @SubscribeMessage('makeRoom')
@@ -87,7 +60,7 @@ export class SocketGateway
     @MessageBody() data: MakeOrJoinOrLeaveRoom,
   ) {
     if (this.rooms.includes(data.roomName)) {
-      this.server.to(socket.id).emit('makeRoom', {
+      this.server.to(socket.id).emit('makeRoomResponse', {
         message: 'room already exists',
         roomName: data.roomName,
       });
@@ -95,14 +68,11 @@ export class SocketGateway
       return;
     }
 
-    const userName = await this.redis_socket_user.get(socket.id);
-
     this.rooms.push(data.roomName);
     socket.join(data.roomName);
-    this.server.to(socket.id).emit('makeRoom', {
+    this.server.to(socket.id).emit('makeRoomResponse', {
       message: 'success',
       roomName: data.roomName,
-      userName,
     });
 
     this.logger.log(`Room ${data.roomName} created`);
@@ -115,15 +85,12 @@ export class SocketGateway
   ) {
     for (const room of this.rooms) {
       if (room === data.roomName) {
-        const userName = await this.redis_socket_user.get(socket.id);
-
         this.rooms.splice(this.rooms.indexOf(room), 1);
         socket.join(data.roomName);
 
-        this.server.to(socket.id).emit('joinRoom', {
+        this.server.to(socket.id).emit('joinRoomResponse', {
           message: 'success',
           roomName: data.roomName,
-          userName,
         });
 
         this.logger.log(`User joined room ${data.roomName}`);
@@ -138,12 +105,9 @@ export class SocketGateway
     @ConnectedSocket() socket: Socket,
     @MessageBody() data: SendMessage,
   ) {
-    const userName = await this.redis_socket_user.get(socket.id);
-
-    this.server.to(data.roomName).emit('sendMessage', {
+    this.server.to(data.roomName).emit('sendMessageResponse', {
       message: data.content,
       roomName: data.roomName,
-      userName,
     });
 
     this.logger.log(`Message sent to room ${data.roomName}`);
