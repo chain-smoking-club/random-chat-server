@@ -22,9 +22,10 @@ import { MakeOrJoinOrLeaveRoom, SendMessage } from './socket.dto';
 export class SocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
-  constructor() {}
-
-  rooms: string[] = [];
+  constructor(
+    @InjectRedis('rooms')
+    private readonly redis_rooms: Redis,
+  ) {}
 
   @WebSocketServer()
   server: Server;
@@ -48,7 +49,8 @@ export class SocketGateway
     @ConnectedSocket() socket: Socket,
     @MessageBody() data: MakeOrJoinOrLeaveRoom,
   ) {
-    if (this.rooms.includes(data.roomName)) {
+    const isRoomExists = await this.redis_rooms.exists(data.roomName);
+    if (isRoomExists) {
       this.server.to(socket.id).emit('makeRoomResponse', {
         isSuccess: false,
         message: 'room already exists',
@@ -58,15 +60,16 @@ export class SocketGateway
       return;
     }
 
-    this.rooms.push(data.roomName);
+    await this.redis_rooms.set(data.roomName, 0);
+
     socket.join(data.roomName);
     this.server.to(socket.id).emit('makeRoomResponse', {
       isSuccess: true,
-      message: 'success',
+      message: 'room created successfully',
       roomName: data.roomName,
     });
 
-    this.logger.log(`Room ${data.roomName} created`);
+    this.logger.log(`Client: ${socket.id} created room: ${data.roomName}`);
   }
 
   @SubscribeMessage('joinRoom')
@@ -74,26 +77,25 @@ export class SocketGateway
     @ConnectedSocket() socket: Socket,
     @MessageBody() data: MakeOrJoinOrLeaveRoom,
   ) {
-    for (const room of this.rooms) {
-      if (room === data.roomName) {
-        this.rooms.splice(this.rooms.indexOf(room), 1);
-        socket.join(data.roomName);
+    const isRoomExists = await this.redis_rooms.exists(data.roomName);
+    if (!isRoomExists) {
+      this.server.to(socket.id).emit('joinRoomResponse', {
+        isSuccess: false,
+        message: 'room does not exist',
+        roomName: data.roomName,
+      });
 
-        this.server.to(socket.id).emit('joinRoomResponse', {
-          isSuccess: true,
-          message: 'success',
-        });
-
-        this.logger.log(`User joined room ${data.roomName}`);
-
-        return;
-      }
+      return;
     }
 
+    socket.join(data.roomName);
     this.server.to(socket.id).emit('joinRoomResponse', {
-      isSuccess: false,
-      message: 'room does not exist',
+      isSuccess: true,
+      message: 'joined room successfully',
+      roomName: data.roomName,
     });
+
+    this.logger.log(`Client: ${socket.id} joined room: ${data.roomName}`);
   }
 
   @SubscribeMessage('sendMessage')
@@ -102,6 +104,10 @@ export class SocketGateway
     @MessageBody() data: SendMessage,
   ) {
     this.server.to(data.roomName).emit('sendMessageResponse', {
+      isSuccess: true,
+    });
+
+    this.server.to(data.roomName).emit('receiveMessage', {
       content: data.content,
     });
 
