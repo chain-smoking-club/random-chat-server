@@ -2,8 +2,6 @@ import { Module } from '@nestjs/common';
 import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { SocketModule } from './socket/socket.module';
 import { UserModule } from './user/user.module';
 import { User } from './entity/user.entity';
@@ -14,15 +12,14 @@ import { RoomModule } from './room/room.module';
   imports: [
     TypeOrmModule.forRoot({
       type: 'mysql',
-      host: 'localhost',
-      port: 13306,
+      host: process.env.MYSQL_HOST,
+      port: process.env.MYSQL_DOCKER_PORT,
       username: 'root',
       password: '3565',
       database: 'random_chat',
       entities: [User],
       synchronize: true,
     }),
-
     RedisModule.forRoot({
       config: [
         {
@@ -45,13 +42,10 @@ import { RoomModule } from './room/room.module';
         },
       ],
     }),
-
     SocketModule,
     UserModule,
     AuthModule,
     RoomModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}
