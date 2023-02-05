@@ -12,11 +12,11 @@ import { RoomModule } from './room/room.module';
   imports: [
     TypeOrmModule.forRoot({
       type: 'mysql',
-      host: process.env.MYSQL_HOST,
-      port: process.env.MYSQL_DOCKER_PORT,
+      host: 'localhost',
+      port: 13306,
       username: 'root',
       password: '3565',
-      database: 'random_chat',
+      database: 'random_chat_db',
       entities: [User],
       synchronize: true,
     }),
