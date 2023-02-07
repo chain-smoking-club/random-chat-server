@@ -1,7 +1,8 @@
 import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { JwtAuthGuard } from '../common/guards/jwt.auth.guard';
+
 import { RoomService } from './room.service';
+import { JwtAuthGuard } from '../common/guards/jwt.auth.guard';
 
 @Controller('api')
 export class RoomController {

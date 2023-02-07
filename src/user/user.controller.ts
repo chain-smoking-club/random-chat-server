@@ -1,8 +1,9 @@
-import { Body, Controller, Post, Req, Res } from '@nestjs/common';
-import { UserService } from './user.service';
-import { Request, Response } from 'express';
-import { CreateUserDto } from '../common/dtos/user.dto';
 import * as bcrypt from 'bcrypt';
+import { Body, Controller, Post, Req, Res } from '@nestjs/common';
+import { Request, Response } from 'express';
+
+import { UserService } from './user.service';
+import { CreateUserDto } from '../common/dtos/user.dto';
 
 @Controller('api')
 export class UserController {
