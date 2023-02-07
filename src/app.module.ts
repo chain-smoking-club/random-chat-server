@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { SocketModule } from './socket/socket.module';
 import { UserModule } from './user/user.module';
-import { User } from './entity/user.entity';
+import { User } from './common/entities/user.entity';
 import { AuthModule } from './auth/auth.module';
 import { RoomModule } from './room/room.module';
 
@@ -31,14 +31,8 @@ import { RoomModule } from './room/room.module';
         {
           host: 'localhost',
           port: 16379,
-          namespace: 'socket_user',
-          db: 1,
-        },
-        {
-          host: 'localhost',
-          port: 16379,
           namespace: 'socket_room',
-          db: 2,
+          db: 1,
         },
       ],
     }),

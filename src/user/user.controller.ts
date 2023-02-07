@@ -1,7 +1,7 @@
 import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { UserService } from './user.service';
 import { Request, Response } from 'express';
-import { CreateUserDto } from './dto/user.dto';
+import { CreateUserDto } from '../common/dtos/user.dto';
 import * as bcrypt from 'bcrypt';
 
 @Controller('api')
@@ -15,8 +15,8 @@ export class UserController {
     @Body() createDto: CreateUserDto,
   ) {
     createDto.password = await bcrypt.hash(createDto.password, 10);
-    const user = await this.userService.createUser(createDto);
+    const user = await this.userService.create(createDto);
     delete user.password;
-    return res.status(201).json(user);
+    return res.status(200).json(user);
   }
 }

@@ -13,7 +13,7 @@ import {
 import { Redis } from 'ioredis';
 import { Socket, Server } from 'socket.io';
 
-import { MakeOrJoinOrLeaveRoom, SendMessage } from './socket.dto';
+import { MakeOrJoinOrLeaveRoom, SendMessage } from '../common/dtos/socket.dto';
 
 @WebSocketGateway({
   transports: ['websocket'],
@@ -25,6 +25,8 @@ export class SocketGateway
   constructor(
     @InjectRedis('rooms')
     private readonly redis_rooms: Redis,
+    @InjectRedis('socket_room')
+    private readonly redis_socket_room: Redis,
   ) {}
 
   @WebSocketServer()
@@ -61,6 +63,7 @@ export class SocketGateway
     }
 
     await this.redis_rooms.set(data.roomName, 0);
+    await this.redis_socket_room.set(socket.id, data.roomName);
 
     socket.join(data.roomName);
     this.server.to(socket.id).emit('makeRoomResponse', {
@@ -88,6 +91,7 @@ export class SocketGateway
       return;
     }
 
+    await this.redis_socket_room.set(socket.id, data.roomName);
     socket.join(data.roomName);
     this.server.to(socket.id).emit('joinRoomResponse', {
       isSuccess: true,
