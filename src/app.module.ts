@@ -2,7 +2,7 @@ import { Module, ValidationPipe } from '@nestjs/common';
 import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
-import { APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 
 import { SocketModule } from './socket/socket.module';
 import { UserModule } from './user/user.module';
@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { RoomModule } from './room/room.module';
 import { typeOrmConfigAsync } from './common/configs/typeorm.config';
 import { redisConfigAsync } from './common/configs/redis.config';
+import { AllExceptionsFilter } from './common/filters/http.exception.filter';
 
 @Module({
   imports: [
@@ -28,6 +29,10 @@ import { redisConfigAsync } from './common/configs/redis.config';
         whitelist: true,
         forbidNonWhitelisted: true,
       }),
+    },
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
     },
   ],
 })
