@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 
 import { UserService } from '../user/user.service';
+import { User } from '../common/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -22,7 +23,7 @@ export class AuthService {
     return null;
   }
 
-  async login(user: any) {
+  async login(user: User): Promise<any> {
     const payload = { email: user.email, sub: user.id };
 
     return {

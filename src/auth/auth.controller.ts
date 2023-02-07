@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 
 import { AuthService } from './auth.service';
 import { LoginDto } from '../common/dtos/auth.dto';
+import { User } from '../common/entities/user.entity';
 
 @Controller('api')
 export class AuthController {
@@ -16,7 +17,7 @@ export class AuthController {
     @Res() res: Response,
     @Body() loginDto: LoginDto,
   ) {
-    const data = await this.authService.login(req.user);
+    const data = await this.authService.login(req.user as User);
 
     return res.status(200).json(data);
   }
