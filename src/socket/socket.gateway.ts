@@ -1,5 +1,5 @@
 import { InjectRedis } from '@liaoliaots/nestjs-redis/dist/redis/common';
-import { Logger, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -13,14 +13,12 @@ import {
 import { Redis } from 'ioredis';
 import { Socket, Server } from 'socket.io';
 
-import { AllExceptionsFilter } from '../common/filters/http.exception.filter';
 import { MakeOrJoinOrLeaveRoom, SendMessage } from '../common/dtos/socket.dto';
 
 @WebSocketGateway({
   transports: ['websocket'],
   heartbeatInterval: 10000,
 })
-@UseFilters(AllExceptionsFilter)
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 export class SocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
