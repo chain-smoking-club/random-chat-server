@@ -7,16 +7,17 @@ import { ConfigService } from '@nestjs/config';
 
 import { UserService } from '../user/user.service';
 import { User } from '../common/entities/user.entity';
+import { Payload } from '../common/interfaces/payload.interface';
 
 @Injectable()
 export class AuthService {
   constructor(
+    @InjectRedis('access_token')
+    private readonly redis_access_token: Redis,
+
     private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
-
-    @InjectRedis('access_token')
-    private readonly redis_access_token: Redis,
   ) {}
 
   async validateUser(email: string, password: string): Promise<User> {
@@ -50,13 +51,12 @@ export class AuthService {
     return true;
   }
 
-  async validateToken(token: string): Promise<any> {
-    const user = await this.jwtService.verify(token);
-
-    if (user) {
-      return user;
+  async validateToken(token: string): Promise<Payload> {
+    try {
+      const payload = await this.jwtService.verify(token);
+      return payload;
+    } catch (error) {
+      throw error;
     }
-
-    return null;
   }
 }
