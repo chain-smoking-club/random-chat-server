@@ -11,14 +11,20 @@ export class RedisConfig {
         {
           host: configService.get<string>('REDIS_HOST'),
           port: configService.get<number>('REDIS_DOCKER_PORT'),
-          namespace: 'rooms',
+          namespace: 'access_token',
           db: 0,
         },
         {
           host: configService.get<string>('REDIS_HOST'),
           port: configService.get<number>('REDIS_DOCKER_PORT'),
-          namespace: 'socket_room',
+          namespace: 'rooms',
           db: 1,
+        },
+        {
+          host: configService.get<string>('REDIS_HOST'),
+          port: configService.get<number>('REDIS_DOCKER_PORT'),
+          namespace: 'socket_room',
+          db: 2,
         },
       ],
     };

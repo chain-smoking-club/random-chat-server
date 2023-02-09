@@ -4,7 +4,6 @@ import { Request, Response } from 'express';
 
 import { AuthService } from './auth.service';
 import { LoginDto } from '../common/dtos/auth.dto';
-import { User } from '../common/entities/user.entity';
 
 @Controller('api')
 export class AuthController {
@@ -17,8 +16,19 @@ export class AuthController {
     @Res() res: Response,
     @Body() loginDto: LoginDto,
   ) {
-    const data = await this.authService.login(req.user as User);
+    const data = await this.authService.login(req.user['email']);
 
-    return res.status(200).json(data);
+    return res.status(200).json({
+      result: true,
+      data,
+    });
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('auth/logout')
+  async logout(@Req() req: Request, @Res() res: Response) {
+    const result = await this.authService.logout(req.user['email']);
+
+    return res.status(200).json({ result });
   }
 }
