@@ -22,7 +22,6 @@ import { MakeOrJoinOrLeaveRoom, SendMessage } from '../common/dtos/socket.dto';
   transports: ['websocket'],
   heartbeatInterval: 10000,
 })
-@UseFilters(HttpExceptionFilter)
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 export class SocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
@@ -64,10 +63,10 @@ export class SocketGateway
 
       this.logger.log(`Client Connected : ${socket.id}`);
     } catch (error) {
-      this.logger.error(error);
       socket.emit('error', 'Unauthorized');
       socket.disconnect();
-      return;
+
+      this.logger.error(error);
     }
   }
 
