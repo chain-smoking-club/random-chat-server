@@ -33,7 +33,10 @@ export class AuthService {
 
   async login(email: string): Promise<any> {
     const payload = { sub: email };
-    const access_token = this.jwtService.sign(payload);
+    const options = {
+      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN'),
+    };
+    const access_token = this.jwtService.sign(payload, options);
 
     await this.redis_access_token.set(
       email,
