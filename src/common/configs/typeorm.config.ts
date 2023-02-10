@@ -16,6 +16,7 @@ export class TypeOrmConfig {
       password: configService.get<string>('MYSQL_ROOT_PASSWORD'),
       database: configService.get<string>('MYSQL_DATABASE'),
       entities: [User],
+      logging: true,
       synchronize: true,
     };
   }
