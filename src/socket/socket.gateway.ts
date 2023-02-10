@@ -18,6 +18,7 @@ import { Socket, Server } from 'socket.io';
 import { WsValidationExceptionFilter } from '../common/filters/ws-validation-exception.filter';
 import { AuthService } from '../auth/auth.service';
 import { MakeOrJoinOrLeaveRoom, SendMessage } from '../common/dtos/socket.dto';
+import { SocketService } from './socket.service';
 
 @WebSocketGateway({
   transports: ['websocket'],
@@ -32,12 +33,10 @@ export class SocketGateway
     @InjectRedis('rooms')
     private readonly redis_rooms: Redis,
 
-    @InjectRedis('socket_room')
-    private readonly redis_socket_room: Redis,
-
     @InjectRedis('access_token')
     private readonly redis_access_token: Redis,
 
+    private readonly socketService: SocketService,
     private readonly authService: AuthService,
   ) {}
 
@@ -52,18 +51,7 @@ export class SocketGateway
 
   async handleConnection(socket: Socket, ...args: any[]) {
     try {
-      const token = socket.handshake.headers.authorization.replace(
-        'Bearer ',
-        '',
-      );
-      const tokenInfo = await this.authService.validateToken(token);
-      const accessTokenInRedis = await this.redis_access_token.get(
-        tokenInfo.sub,
-      );
-
-      if (accessTokenInRedis !== token) {
-        throw new WsException('Unauthorized');
-      }
+      await this.socketService.getEmailByAuthSocket(socket);
 
       this.logger.log(`Client Connected : ${socket.id}`);
     } catch (error) {
@@ -73,7 +61,7 @@ export class SocketGateway
     }
   }
 
-  async handleDisconnect(socket: Socket): Promise<void> {
+  async handleDisconnect(socket: Socket) {
     this.logger.log(`Client Disconnected : ${socket.id}`);
   }
 
@@ -81,40 +69,8 @@ export class SocketGateway
   async makeRoom(
     @ConnectedSocket() socket: Socket,
     @MessageBody() payload: MakeOrJoinOrLeaveRoom,
-  ): Promise<WsResponse<unknown>> {
-    const isRoomExists = await this.redis_rooms.exists(payload.roomName);
-    if (isRoomExists) {
-      const event = 'makeRoom';
-      const data = {
-        statusCode: 400,
-        message: 'room already exists',
-      };
-      this.logger.log(
-        `Client: ${socket.id} tried to create room: ${payload.roomName} but it already exists`,
-      );
-      return {
-        event,
-        data,
-      };
-    }
-
-    await this.redis_rooms.set(payload.roomName, socket.id);
-    await this.redis_socket_room.set(socket.id, payload.roomName);
-
-    socket.join(payload.roomName);
-
-    const event = 'makeRoom';
-    const data = {
-      statusCode: 200,
-      message: 'room created successfully',
-    };
-
-    this.logger.log(`Client: ${socket.id} created room: ${payload.roomName}`);
-
-    return {
-      event,
-      data,
-    };
+  ) {
+    return await this.socketService.makeRoom(socket, payload.roomName);
   }
 
   @SubscribeMessage('joinRoom')
@@ -122,40 +78,7 @@ export class SocketGateway
     @ConnectedSocket() socket: Socket,
     @MessageBody() payload: MakeOrJoinOrLeaveRoom,
   ) {
-    const isRoomExists = await this.redis_rooms.exists(payload.roomName);
-    if (!isRoomExists) {
-      const event = 'joinRoom';
-      const data = {
-        statusCode: 400,
-        message: 'room does not exist',
-      };
-
-      this.logger.log(
-        `Client: ${socket.id} tried to join room: ${payload.roomName} but it does not exist`,
-      );
-
-      return {
-        event,
-        data,
-      };
-    }
-
-    await this.redis_socket_room.set(socket.id, payload.roomName);
-
-    socket.join(payload.roomName);
-
-    const event = 'joinRoom';
-    const data = {
-      statusCode: 200,
-      message: 'room joined successfully',
-    };
-
-    this.logger.log(`Client: ${socket.id} joined room: ${payload.roomName}`);
-
-    return {
-      event,
-      data,
-    };
+    return await this.socketService.joinRoom(socket, payload.roomName);
   }
 
   @SubscribeMessage('sendMessage')
@@ -186,8 +109,6 @@ export class SocketGateway
     @ConnectedSocket() socket: Socket,
     @MessageBody() payload: MakeOrJoinOrLeaveRoom,
   ) {
-    await this.redis_socket_room.del(socket.id);
-
     socket.leave(payload.roomName);
 
     const event = 'leaveRoom';
