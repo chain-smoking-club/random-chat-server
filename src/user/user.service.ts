@@ -1,3 +1,4 @@
+import * as bcrypt from 'bcrypt';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,12 +14,16 @@ export class UserService {
   ) {}
 
   async create(createDto: CreateUserDto): Promise<User> {
-    return await this.userRepository.save(createDto);
+    createDto.password = await bcrypt.hash(createDto.password, 10);
+    const user = await this.userRepository.save(createDto);
+    delete user.password;
+    return user;
   }
 
   async findOneByEmail(email: string): Promise<User> {
     return await this.userRepository.findOne({
       where: { email },
+      select: ['email', 'nickname', 'image_file_path', 'thumbnail_file_path'],
     });
   }
 }

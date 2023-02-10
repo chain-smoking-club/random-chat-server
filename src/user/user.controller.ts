@@ -1,9 +1,17 @@
-import * as bcrypt from 'bcrypt';
-import { Body, Controller, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { Request, Response } from 'express';
 
 import { UserService } from './user.service';
 import { CreateUserDto } from '../common/dtos/user.dto';
+import { JwtAuthGuard } from '../common/guards/jwt.auth.guard';
 
 @Controller('api')
 export class UserController {
@@ -15,9 +23,22 @@ export class UserController {
     @Res() res: Response,
     @Body() createDto: CreateUserDto,
   ) {
-    createDto.password = await bcrypt.hash(createDto.password, 10);
-    const user = await this.userService.create(createDto);
-    delete user.password;
-    return res.status(200).json(user);
+    const data = await this.userService.create(createDto);
+
+    return res.status(200).json({
+      result: true,
+      data,
+    });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('users/info')
+  async getUserInfo(@Req() req: Request, @Res() res: Response) {
+    const user = await this.userService.findOneByEmail(req.user['email']);
+
+    return res.status(200).json({
+      result: true,
+      data: user,
+    });
   }
 }
