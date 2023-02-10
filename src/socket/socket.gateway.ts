@@ -1,6 +1,5 @@
 import { InjectRedis } from '@liaoliaots/nestjs-redis/dist/redis/common';
-import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
-import { UseFilters } from '@nestjs/common/decorators';
+import { Logger, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -10,11 +9,13 @@ import {
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
+  WsException,
+  WsResponse,
 } from '@nestjs/websockets';
 import { Redis } from 'ioredis';
 import { Socket, Server } from 'socket.io';
 
-import { HttpExceptionFilter } from '../common/filters/http.exception.filter';
+import { WsValidationExceptionFilter } from '../common/filters/ws-validation-exception.filter';
 import { AuthService } from '../auth/auth.service';
 import { MakeOrJoinOrLeaveRoom, SendMessage } from '../common/dtos/socket.dto';
 
@@ -22,6 +23,7 @@ import { MakeOrJoinOrLeaveRoom, SendMessage } from '../common/dtos/socket.dto';
   transports: ['websocket'],
   heartbeatInterval: 10000,
 })
+@UseFilters(new WsValidationExceptionFilter())
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 export class SocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
@@ -54,18 +56,19 @@ export class SocketGateway
         'Bearer ',
         '',
       );
-      const payload = await this.authService.validateToken(token);
-      const accessTokenInRedis = await this.redis_access_token.get(payload.sub);
+      const tokenInfo = await this.authService.validateToken(token);
+      const accessTokenInRedis = await this.redis_access_token.get(
+        tokenInfo.sub,
+      );
 
       if (accessTokenInRedis !== token) {
-        throw new Error('Unauthorized');
+        throw new WsException('Unauthorized');
       }
 
       this.logger.log(`Client Connected : ${socket.id}`);
     } catch (error) {
-      socket.emit('error', 'Unauthorized');
+      socket.emit('error', error.message);
       socket.disconnect();
-
       this.logger.error(error);
     }
   }
@@ -77,86 +80,97 @@ export class SocketGateway
   @SubscribeMessage('makeRoom')
   async makeRoom(
     @ConnectedSocket() socket: Socket,
-    @MessageBody() data: MakeOrJoinOrLeaveRoom,
-  ) {
-    const isRoomExists = await this.redis_rooms.exists(data.roomName);
+    @MessageBody() payload: MakeOrJoinOrLeaveRoom,
+  ): Promise<WsResponse<unknown>> {
+    const isRoomExists = await this.redis_rooms.exists(payload.roomName);
     if (isRoomExists) {
       this.server.to(socket.id).emit('makeRoomResponse', {
         isSuccess: false,
         message: 'room already exists',
-        roomName: data.roomName,
+        roomName: payload.roomName,
       });
 
       return;
     }
 
-    await this.redis_rooms.set(data.roomName, 0);
-    await this.redis_socket_room.set(socket.id, data.roomName);
+    await this.redis_rooms.set(payload.roomName, 0);
+    await this.redis_socket_room.set(socket.id, payload.roomName);
 
-    socket.join(data.roomName);
-    this.server.to(socket.id).emit('makeRoomResponse', {
+    socket.join(payload.roomName);
+    const event = 'makeRoom';
+    const data = {
       isSuccess: true,
       message: 'room created successfully',
-      roomName: data.roomName,
-    });
+      roomName: payload.roomName,
+    };
+    return {
+      event,
+      data,
+    };
 
-    this.logger.log(`Client: ${socket.id} created room: ${data.roomName}`);
+    // this.server.to(socket.id).emit('makeRoomResponse', {
+    //   isSuccess: true,
+    //   message: 'room created successfully',
+    //   roomName: payload.roomName,
+    // });
+
+    this.logger.log(`Client: ${socket.id} created room: ${payload.roomName}`);
   }
 
   @SubscribeMessage('joinRoom')
   async joinRoom(
     @ConnectedSocket() socket: Socket,
-    @MessageBody() data: MakeOrJoinOrLeaveRoom,
+    @MessageBody() payload: MakeOrJoinOrLeaveRoom,
   ) {
-    const isRoomExists = await this.redis_rooms.exists(data.roomName);
+    const isRoomExists = await this.redis_rooms.exists(payload.roomName);
     if (!isRoomExists) {
       this.server.to(socket.id).emit('joinRoomResponse', {
         isSuccess: false,
         message: 'room does not exist',
-        roomName: data.roomName,
+        roomName: payload.roomName,
       });
 
       return;
     }
 
-    await this.redis_socket_room.set(socket.id, data.roomName);
-    socket.join(data.roomName);
+    await this.redis_socket_room.set(socket.id, payload.roomName);
+    socket.join(payload.roomName);
     this.server.to(socket.id).emit('joinRoomResponse', {
       isSuccess: true,
       message: 'joined room successfully',
-      roomName: data.roomName,
+      roomName: payload.roomName,
     });
 
-    this.logger.log(`Client: ${socket.id} joined room: ${data.roomName}`);
+    this.logger.log(`Client: ${socket.id} joined room: ${payload.roomName}`);
   }
 
   @SubscribeMessage('sendMessage')
   async chat(
     @ConnectedSocket() socket: Socket,
-    @MessageBody() data: SendMessage,
+    @MessageBody() payload: SendMessage,
   ) {
-    this.server.to(data.roomName).emit('sendMessageResponse', {
+    this.server.to(payload.roomName).emit('sendMessageResponse', {
       isSuccess: true,
     });
 
-    this.server.to(data.roomName).emit('receiveMessage', {
-      content: data.content,
+    this.server.to(payload.roomName).emit('receiveMessage', {
+      content: payload.content,
     });
 
-    this.logger.log(`Message sent to room ${data.roomName}`);
+    this.logger.log(`Message sent to room ${payload.roomName}`);
   }
 
   @SubscribeMessage('leaveRoom')
   async leaveRoom(
     @ConnectedSocket() socket: Socket,
-    @MessageBody() data: MakeOrJoinOrLeaveRoom,
+    @MessageBody() payload: MakeOrJoinOrLeaveRoom,
   ) {
-    this.server.to(data.roomName).emit('leaveRoomResponse', {
+    this.server.to(payload.roomName).emit('leaveRoomResponse', {
       isSuccess: true,
     });
 
-    socket.leave(data.roomName);
+    socket.leave(payload.roomName);
 
-    this.logger.log(`User left room ${data.roomName}`);
+    this.logger.log(`User left room ${payload.roomName}`);
   }
 }

@@ -10,7 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { RoomModule } from './room/room.module';
 import { typeOrmConfigAsync } from './common/configs/typeorm.config';
 import { redisConfigAsync } from './common/configs/redis.config';
-import { HttpExceptionFilter } from './common/filters/http.exception.filter';
+import { AllExceptionFilter } from './common/filters/all-exception.filter';
 
 @Module({
   imports: [
@@ -32,7 +32,7 @@ import { HttpExceptionFilter } from './common/filters/http.exception.filter';
     },
     {
       provide: APP_FILTER,
-      useClass: HttpExceptionFilter,
+      useClass: AllExceptionFilter,
     },
   ],
 })
