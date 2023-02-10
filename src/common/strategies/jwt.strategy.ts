@@ -25,7 +25,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any): Promise<any> {
     const accessTokenInRedis = await this.redis_access_token.get(payload.sub);
-
     if (
       JSON.stringify(this.jwtService.decode(accessTokenInRedis)) !==
       JSON.stringify(payload)
