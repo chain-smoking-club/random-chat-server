@@ -7,7 +7,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { UserService } from '../user/user.service';
 import { User } from '../common/entities/user.entity';
-import { Payload } from '../common/interfaces/payload.interface';
+import { IPayload } from '../common/interfaces/payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -51,12 +51,7 @@ export class AuthService {
     return true;
   }
 
-  async validateToken(token: string): Promise<Payload> {
-    try {
-      const payload = await this.jwtService.verify(token);
-      return payload;
-    } catch (error) {
-      throw error;
-    }
+  async validateToken(token: string): Promise<IPayload> {
+    return await this.jwtService.verify(token);
   }
 }
