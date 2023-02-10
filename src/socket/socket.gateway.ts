@@ -84,37 +84,37 @@ export class SocketGateway
   ): Promise<WsResponse<unknown>> {
     const isRoomExists = await this.redis_rooms.exists(payload.roomName);
     if (isRoomExists) {
-      this.server.to(socket.id).emit('makeRoomResponse', {
-        isSuccess: false,
+      const event = 'makeRoom';
+      const data = {
+        statusCode: 400,
         message: 'room already exists',
-        roomName: payload.roomName,
-      });
-
-      return;
+      };
+      this.logger.log(
+        `Client: ${socket.id} tried to create room: ${payload.roomName} but it already exists`,
+      );
+      return {
+        event,
+        data,
+      };
     }
 
-    await this.redis_rooms.set(payload.roomName, 0);
+    await this.redis_rooms.set(payload.roomName, socket.id);
     await this.redis_socket_room.set(socket.id, payload.roomName);
 
     socket.join(payload.roomName);
+
     const event = 'makeRoom';
     const data = {
-      isSuccess: true,
+      statusCode: 200,
       message: 'room created successfully',
-      roomName: payload.roomName,
     };
+
+    this.logger.log(`Client: ${socket.id} created room: ${payload.roomName}`);
+
     return {
       event,
       data,
     };
-
-    // this.server.to(socket.id).emit('makeRoomResponse', {
-    //   isSuccess: true,
-    //   message: 'room created successfully',
-    //   roomName: payload.roomName,
-    // });
-
-    this.logger.log(`Client: ${socket.id} created room: ${payload.roomName}`);
   }
 
   @SubscribeMessage('joinRoom')
@@ -124,24 +124,38 @@ export class SocketGateway
   ) {
     const isRoomExists = await this.redis_rooms.exists(payload.roomName);
     if (!isRoomExists) {
-      this.server.to(socket.id).emit('joinRoomResponse', {
-        isSuccess: false,
+      const event = 'joinRoom';
+      const data = {
+        statusCode: 400,
         message: 'room does not exist',
-        roomName: payload.roomName,
-      });
+      };
 
-      return;
+      this.logger.log(
+        `Client: ${socket.id} tried to join room: ${payload.roomName} but it does not exist`,
+      );
+
+      return {
+        event,
+        data,
+      };
     }
 
     await this.redis_socket_room.set(socket.id, payload.roomName);
+
     socket.join(payload.roomName);
-    this.server.to(socket.id).emit('joinRoomResponse', {
-      isSuccess: true,
-      message: 'joined room successfully',
-      roomName: payload.roomName,
-    });
+
+    const event = 'joinRoom';
+    const data = {
+      statusCode: 200,
+      message: 'room joined successfully',
+    };
 
     this.logger.log(`Client: ${socket.id} joined room: ${payload.roomName}`);
+
+    return {
+      event,
+      data,
+    };
   }
 
   @SubscribeMessage('sendMessage')
@@ -149,15 +163,22 @@ export class SocketGateway
     @ConnectedSocket() socket: Socket,
     @MessageBody() payload: SendMessage,
   ) {
-    this.server.to(payload.roomName).emit('sendMessageResponse', {
-      isSuccess: true,
-    });
-
     this.server.to(payload.roomName).emit('receiveMessage', {
       content: payload.content,
     });
 
+    const event = 'sendMessage';
+    const data = {
+      statusCode: 200,
+      message: 'message sent successfully',
+    };
+
     this.logger.log(`Message sent to room ${payload.roomName}`);
+
+    return {
+      event,
+      data,
+    };
   }
 
   @SubscribeMessage('leaveRoom')
@@ -165,12 +186,21 @@ export class SocketGateway
     @ConnectedSocket() socket: Socket,
     @MessageBody() payload: MakeOrJoinOrLeaveRoom,
   ) {
-    this.server.to(payload.roomName).emit('leaveRoomResponse', {
-      isSuccess: true,
-    });
+    await this.redis_socket_room.del(socket.id);
 
     socket.leave(payload.roomName);
 
+    const event = 'leaveRoom';
+    const data = {
+      statusCode: 200,
+      message: 'room left successfully',
+    };
+
     this.logger.log(`User left room ${payload.roomName}`);
+
+    return {
+      event,
+      data,
+    };
   }
 }
