@@ -35,6 +35,7 @@ export class UserController {
   @Get('users/info')
   async getUserInfo(@Req() req: Request, @Res() res: Response) {
     const user = await this.userService.findOneByEmail(req.user['email']);
+    delete user.password;
 
     return res.status(200).json({
       result: true,
