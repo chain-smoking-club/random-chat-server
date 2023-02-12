@@ -23,7 +23,6 @@ export class UserService {
   async findOneByEmail(email: string): Promise<User> {
     return await this.userRepository.findOne({
       where: { email },
-      select: ['email', 'nickname', 'image_file_path', 'thumbnail_file_path'],
     });
   }
 }
