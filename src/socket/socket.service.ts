@@ -19,7 +19,15 @@ export class SocketService {
   ) {}
 
   async getEmailByAuthSocket(socket: Socket): Promise<string> {
-    const token = socket.handshake.headers.authorization.replace('Bearer ', '');
+    let token: string;
+
+    if (socket.handshake.auth.token) {
+      token = socket.handshake.auth.token;
+    } else {
+      token = socket.handshake.query.token as string;
+    }
+
+    token = token.replace('Bearer ', '');
     const tokenInfo = await this.authService.validateToken(token);
     const accessTokenInRedis = await this.redis_access_token.get(tokenInfo.sub);
 
