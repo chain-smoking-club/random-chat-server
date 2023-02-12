@@ -16,7 +16,10 @@ export class AuthController {
     @Res() res: Response,
     @Body() loginDto: LoginDto,
   ) {
-    const data = await this.authService.login(req.user['email']);
+    const data = await this.authService.login(
+      req.user['email'],
+      req.user['nickname'],
+    );
 
     return res.status(200).json({
       result: true,

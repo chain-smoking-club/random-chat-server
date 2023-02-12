@@ -31,8 +31,8 @@ export class AuthService {
     return null;
   }
 
-  async login(email: string): Promise<any> {
-    const payload = { sub: email };
+  async login(email: string, nickname: string): Promise<any> {
+    const payload = { sub: email, nickname };
     const options = {
       expiresIn: this.configService.get<string>('JWT_EXPIRES_IN'),
     };
