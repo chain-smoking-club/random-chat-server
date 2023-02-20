@@ -1,4 +1,3 @@
-import { InjectRedis } from '@liaoliaots/nestjs-redis/dist/redis/common';
 import { Logger, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
 import {
   ConnectedSocket,
@@ -9,14 +8,10 @@ import {
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
-  WsException,
-  WsResponse,
 } from '@nestjs/websockets';
-import { Redis } from 'ioredis';
 import { Socket, Server } from 'socket.io';
 
 import { WsValidationExceptionFilter } from '../common/filters/ws-validation-exception.filter';
-import { AuthService } from '../auth/auth.service';
 import { MakeOrJoinOrLeaveRoom, SendMessage } from '../common/dtos/socket.dto';
 import { SocketService } from './socket.service';
 
@@ -29,29 +24,20 @@ import { SocketService } from './socket.service';
 export class SocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
-  constructor(
-    @InjectRedis('rooms')
-    private readonly redis_rooms: Redis,
-
-    @InjectRedis('access_token')
-    private readonly redis_access_token: Redis,
-
-    private readonly socketService: SocketService,
-    private readonly authService: AuthService,
-  ) {}
+  constructor(private readonly socketService: SocketService) {}
 
   @WebSocketServer()
   server: Server;
 
   private logger: Logger = new Logger('SocketGateway');
 
-  afterInit(server: Server) {
+  afterInit() {
     this.logger.log('Init SocketGateway');
   }
 
-  async handleConnection(socket: Socket, ...args: any[]) {
+  async handleConnection(socket: Socket) {
     try {
-      await this.socketService.getEmailByAuthSocket(socket);
+      await this.socketService.getNicknameByAuthSocket(socket);
 
       this.logger.log(`Client Connected : ${socket.id}`);
     } catch (error) {
@@ -70,7 +56,8 @@ export class SocketGateway
     @ConnectedSocket() socket: Socket,
     @MessageBody() payload: MakeOrJoinOrLeaveRoom,
   ) {
-    return await this.socketService.makeRoom(socket, payload.roomName);
+    const data = await this.socketService.makeRoom(socket, payload.roomName);
+    return data;
   }
 
   @SubscribeMessage('joinRoom')
@@ -78,7 +65,8 @@ export class SocketGateway
     @ConnectedSocket() socket: Socket,
     @MessageBody() payload: MakeOrJoinOrLeaveRoom,
   ) {
-    return await this.socketService.joinRoom(socket, payload.roomName);
+    const data = await this.socketService.joinRoom(socket, payload.roomName);
+    return data;
   }
 
   @SubscribeMessage('sendMessage')
@@ -90,7 +78,6 @@ export class SocketGateway
       content: payload.content,
     });
 
-    const event = 'sendMessage';
     const data = {
       statusCode: 200,
       message: 'message sent successfully',
@@ -98,10 +85,7 @@ export class SocketGateway
 
     this.logger.log(`Message sent to room ${payload.roomName}`);
 
-    return {
-      event,
-      data,
-    };
+    return data;
   }
 
   @SubscribeMessage('leaveRoom')
@@ -111,7 +95,6 @@ export class SocketGateway
   ) {
     socket.leave(payload.roomName);
 
-    const event = 'leaveRoom';
     const data = {
       statusCode: 200,
       message: 'room left successfully',
@@ -119,9 +102,6 @@ export class SocketGateway
 
     this.logger.log(`User left room ${payload.roomName}`);
 
-    return {
-      event,
-      data,
-    };
+    return data;
   }
 }
