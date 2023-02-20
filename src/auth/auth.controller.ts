@@ -14,6 +14,7 @@ export class AuthController {
   async login(
     @Req() req: Request,
     @Res() res: Response,
+    //eslint-disable-next-line @typescript-eslint/no-unused-vars
     @Body() loginDto: LoginDto,
   ) {
     const data = await this.authService.login(

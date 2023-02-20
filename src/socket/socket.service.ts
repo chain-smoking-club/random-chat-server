@@ -1,9 +1,10 @@
+import { Redis } from 'ioredis';
 import { InjectRedis } from '@liaoliaots/nestjs-redis';
 import { Injectable } from '@nestjs/common';
 import { WsException, WsResponse } from '@nestjs/websockets';
-import Redis from 'ioredis';
 import { Socket } from 'socket.io';
-import { ISocketResponse } from 'src/common/interfaces/socket.response.interface';
+
+import { ISocketResponse } from '../common/interfaces/socket.response.interface';
 import { AuthService } from '../auth/auth.service';
 
 @Injectable()
@@ -18,7 +19,7 @@ export class SocketService {
     private readonly authService: AuthService,
   ) {}
 
-  async getEmailByAuthSocket(socket: Socket): Promise<string> {
+  async getNicknameByAuthSocket(socket: Socket): Promise<string> {
     let token: string;
 
     if (socket.handshake.auth.token) {
@@ -35,40 +36,29 @@ export class SocketService {
       throw new WsException('Unauthorized');
     }
 
-    return tokenInfo.sub;
+    return tokenInfo.nickname;
   }
 
-  async makeRoom(
-    socket: Socket,
-    roomName: string,
-  ): Promise<WsResponse<ISocketResponse>> {
+  async makeRoom(socket: Socket, roomName: string) {
     const isRoomExists = await this.redis_rooms.exists(roomName);
     if (isRoomExists) {
-      const event = 'makeRoom';
       const data = {
         statusCode: 400,
         message: 'room already exists',
       };
 
-      return {
-        event,
-        data,
-      };
+      return data;
     }
 
     await this.redis_rooms.set(roomName, socket.id);
     socket.join(roomName);
 
-    const event = 'makeRoom';
     const data = {
       statusCode: 200,
       message: 'room created successfully',
     };
 
-    return {
-      event,
-      data,
-    };
+    return data;
   }
 
   async joinRoom(
