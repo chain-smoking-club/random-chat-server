@@ -1,14 +1,16 @@
 import { IsString } from '@nestjs/class-validator';
 
-export class SendMessage {
-  @IsString()
-  roomName: string;
-
+export class MessageDto {
   @IsString()
   content: string;
 }
 
-export class MakeOrJoinOrLeaveRoom {
+export class RoomDto {
   @IsString()
   roomName: string;
+}
+
+export interface ISocketResponse {
+  statusCode: number;
+  message: string;
 }
