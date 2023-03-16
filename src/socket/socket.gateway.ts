@@ -12,7 +12,7 @@ import {
 import { Socket, Server } from 'socket.io';
 
 import { WsValidationExceptionFilter } from '../common/filters/ws-validation-exception.filter';
-import { MakeOrJoinOrLeaveRoom, SendMessage } from '../common/dtos/socket.dto';
+import { MessageDto, RoomDto } from '../common/dtos/socket.dto';
 import { SocketService } from './socket.service';
 
 @WebSocketGateway({
@@ -54,16 +54,17 @@ export class SocketGateway
   @SubscribeMessage('makeRoom')
   async makeRoom(
     @ConnectedSocket() socket: Socket,
-    @MessageBody() payload: MakeOrJoinOrLeaveRoom,
+    @MessageBody() payload: RoomDto,
   ) {
     const data = await this.socketService.makeRoom(socket, payload.roomName);
-    return data;
+    const event = 'makeRoom';
+    return { event, data };
   }
 
   @SubscribeMessage('joinRoom')
   async joinRoom(
     @ConnectedSocket() socket: Socket,
-    @MessageBody() payload: MakeOrJoinOrLeaveRoom,
+    @MessageBody() payload: RoomDto,
   ) {
     const data = await this.socketService.joinRoom(socket, payload.roomName);
     return data;
@@ -72,29 +73,30 @@ export class SocketGateway
   @SubscribeMessage('sendMessage')
   async chat(
     @ConnectedSocket() socket: Socket,
-    @MessageBody() payload: SendMessage,
+    @MessageBody() payload: MessageDto,
   ) {
-    this.server.to(payload.roomName).emit('receiveMessage', {
-      content: payload.content,
-    });
+    const roomName = [...socket.rooms][1];
+    this.server.to(roomName).emit('receiveMessage', payload);
 
+    const event = 'sendMessage';
     const data = {
       statusCode: 200,
       message: 'message sent successfully',
     };
 
-    this.logger.log(`Message sent to room ${payload.roomName}`);
+    this.logger.log(`Message sent to room ${roomName}`);
 
-    return data;
+    return { event, data };
   }
 
   @SubscribeMessage('leaveRoom')
   async leaveRoom(
     @ConnectedSocket() socket: Socket,
-    @MessageBody() payload: MakeOrJoinOrLeaveRoom,
+    @MessageBody() payload: RoomDto,
   ) {
     socket.leave(payload.roomName);
 
+    const event = 'leaveRoom';
     const data = {
       statusCode: 200,
       message: 'room left successfully',
@@ -102,6 +104,6 @@ export class SocketGateway
 
     this.logger.log(`User left room ${payload.roomName}`);
 
-    return data;
+    return { event, data };
   }
 }
