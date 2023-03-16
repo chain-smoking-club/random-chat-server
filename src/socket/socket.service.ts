@@ -39,7 +39,7 @@ export class SocketService {
     return tokenInfo.nickname;
   }
 
-  async makeRoom(socket: Socket, roomName: string) {
+  async makeRoom(socket: Socket, roomName: string): Promise<ISocketResponse> {
     const isRoomExists = await this.redis_rooms.exists(roomName);
     if (isRoomExists) {
       const data = {
@@ -61,35 +61,24 @@ export class SocketService {
     return data;
   }
 
-  async joinRoom(
-    socket: Socket,
-    roomName: string,
-  ): Promise<WsResponse<ISocketResponse>> {
+  async joinRoom(socket: Socket, roomName: string): Promise<ISocketResponse> {
     const isRoomExists = await this.redis_rooms.exists(roomName);
     if (!isRoomExists) {
-      const event = 'joinRoom';
       const data = {
         statusCode: 400,
         message: 'room does not exist',
       };
 
-      return {
-        event,
-        data,
-      };
+      return data;
     }
 
     socket.join(roomName);
 
-    const event = 'joinRoom';
     const data = {
       statusCode: 200,
       message: 'room joined successfully',
     };
 
-    return {
-      event,
-      data,
-    };
+    return data;
   }
 }
