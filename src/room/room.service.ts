@@ -9,12 +9,12 @@ export class RoomService {
     private readonly redis_rooms: Redis,
   ) {}
 
-  async findAll() {
+  async findAll(): Promise<string[]> {
     const rooms = await this.redis_rooms.keys('*');
     return rooms;
   }
 
-  async deleteAll() {
+  async deleteAll(): Promise<string[]> {
     const rooms = await this.redis_rooms.keys('*');
     const pipeline = this.redis_rooms.pipeline();
     rooms.forEach((room) => {
