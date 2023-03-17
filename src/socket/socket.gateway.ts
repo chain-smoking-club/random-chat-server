@@ -51,6 +51,22 @@ export class SocketGateway
     this.logger.log(`Client Disconnected : ${socket.id}`);
   }
 
+  @SubscribeMessage('getRooms')
+  getRooms() {
+    const rooms = [];
+    const socketMap = this.server.sockets.adapter.rooms;
+
+    for (const key of socketMap.keys()) {
+      if (key !== [...socketMap.get(key)][0]) {
+        rooms.push(key);
+      }
+    }
+
+    this.logger.log(`Rooms sent to client`);
+
+    return this.server.emit('getRooms', rooms);
+  }
+
   @SubscribeMessage('makeRoom')
   async makeRoom(
     @ConnectedSocket() socket: Socket,
@@ -58,6 +74,12 @@ export class SocketGateway
   ) {
     const data = await this.socketService.makeRoom(socket, payload.roomName);
     const event = 'makeRoom';
+
+    if (data.statusCode === 200) {
+      this.logger.log(`Room created : ${payload.roomName}`);
+      this.getRooms();
+    }
+
     return { event, data };
   }
 
@@ -66,8 +88,12 @@ export class SocketGateway
     @ConnectedSocket() socket: Socket,
     @MessageBody() payload: RoomDto,
   ) {
+    const event = 'joinRoom';
     const data = await this.socketService.joinRoom(socket, payload.roomName);
-    return data;
+
+    this.logger.log(`User joined room ${payload.roomName}`);
+
+    return { event, data };
   }
 
   @SubscribeMessage('sendMessage')
@@ -75,8 +101,12 @@ export class SocketGateway
     @ConnectedSocket() socket: Socket,
     @MessageBody() payload: MessageDto,
   ) {
+    const nickname = await this.socketService.getNicknameByAuthSocket(socket);
     const roomName = [...socket.rooms][1];
-    this.server.to(roomName).emit('receiveMessage', payload);
+    this.server.to(roomName).emit('receiveMessage', {
+      nickname,
+      content: payload.content,
+    });
 
     const event = 'sendMessage';
     const data = {
