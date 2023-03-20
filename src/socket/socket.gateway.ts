@@ -120,19 +120,25 @@ export class SocketGateway
   }
 
   @SubscribeMessage('leaveRoom')
-  async leaveRoom(
-    @ConnectedSocket() socket: Socket,
-    @MessageBody() payload: RoomDto,
-  ) {
-    socket.leave(payload.roomName);
-
+  async leaveRoom(@ConnectedSocket() socket: Socket) {
     const event = 'leaveRoom';
+    const roomName = [...socket.rooms][1];
+    if (!roomName) {
+      const data = {
+        statusCode: 400,
+        message: 'you are not in any room',
+      };
+
+      return { event, data };
+    }
+
+    socket.leave(roomName);
     const data = {
       statusCode: 200,
-      message: 'room left successfully',
+      message: `you left room ${roomName}`,
     };
 
-    this.logger.log(`User left room ${payload.roomName}`);
+    this.logger.log(`User left room ${roomName}`);
 
     return { event, data };
   }
